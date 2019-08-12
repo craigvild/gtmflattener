@@ -1,0 +1,118 @@
+// GTM Events listener: 
+
+window.dataLayerEventCrawler = (function (w) {
+
+    var _outputOptions = {
+        to_console: true,
+        to_utag_Data: false,
+        fire_utag_link: false
+    };
+
+    var _dataLayerEventCrawlerIdsDone = [];
+
+    var _flattenDataLayer = function(dl) {
+        var fdl = {};
+        var d = function (a, b, e, f, h) {
+            var k = JSON.parse(JSON.stringify(a));
+            for (var f in k) {
+                if (h || f.indexOf("gtm.") > -1) {
+                    e = k[f];
+
+                    if (e instanceof Array) {
+                        var cc = 0;
+                        for (var i = 0; i < e.length; i++) {
+                            var x = e[i],
+                                    z = f + i,
+                                    y = ((b != '') ? b + '.' : '') + 'array-items.' + z;
+                            if (x == null ||
+                                    x == undefined ||
+                                    typeof x == 'boolean' ||
+                                    typeof x == 'number' ||
+                                    typeof x == 'string')
+                                (cc++, y.indexOf("gtm.") > -1 ? fdl[y] = x : fdl["gtm." + y] = x);
+                            else
+                                typeof x == 'object' ? d(x, y, null, null, true) : (cc++, y.indexOf("gtm.") > -1 ? fdl[y] = x : fdl["gtm." + y] = x);
+                        }
+                        if (cc === e.length) {
+                            var t = ((b != '') ? b + '.' : '') + f;
+                            t.indexOf("gtm.") > -1 ? fdl[t] = e : fdl["gtm." + t] = e;
+                        }
+                    } else {
+                        if (e == null ||
+                                e == undefined ||
+                                typeof e == 'boolean' ||
+                                typeof e == 'number' ||
+                                typeof e == 'string') {
+                            var t = ((b != '') ? b + '.' : '') + f;
+                            t.indexOf("gtm.") > -1 ? fdl[t] = e : fdl["gtm." + t] = e;
+                        } else
+                        if (typeof e == 'object')
+                            d(e, f, null, null, true);
+                        else {
+                            var t = ((b != '') ? b + '.' : '') + f;
+                            t.indexOf("gtm.") > -1 ? fdl[t] = e : fdl["gtm." + t] = e;
+                        }
+                    }
+                }
+
+            }
+        };
+        d(dl, '', null, null, false);
+        for (var i in fdl)
+            dl[i] = fdl[i];
+
+        return dl;
+    };
+
+    var _crawler = function() {
+        var a = w.dataLayer || [];
+        var d = {};
+
+        function b() {
+            for (var a = 0, b = arguments; a < b.length; a++) {
+                try {
+                    var en = b[a]["event"];
+                    var eid = b[a]["gtm.uniqueEventId"];
+                    if (en &&
+                            eid &&
+                            en !== "gtm.js" &&
+                            en !== "gtm.dom" &&
+                            en !== "gtm.load" &&
+                            _dataLayerEventCrawlerIdsDone.indexOf(eid) === -1) {
+                        for (var i in b[a]) {
+                            var k = JSON.parse(JSON.stringify(b[a][i]));
+                            var n = i.indexOf("gtm") > -1 ? i : "gtm." + i;
+                            d[n] = k;
+                        }
+                        _dataLayerEventCrawlerIdsDone.push(eid);
+                        var t = _flattenDataLayer(d);
+                        t.event_name = "gtm_event";
+                        _fireOutput(t);
+                    }
+                } catch (e) {}
+            }
+        }
+        b.apply(a, a);
+    };
+
+    var _fireOutput = function(d) {
+
+        if (_outputOptions.to_console === true)
+            console.log(d);
+
+        if (_outputOptions.to_utag_Data === true && w.utag_data)
+            for (var f in d)
+                w.utag_data[f] = d[f];
+
+
+        if (_outputOptions.fire_utag_link === true && w.utag && w.utag.link)
+            w.utag.link(d);
+    };
+
+    var _init = function () {
+        w.setInterval(_crawler, 100);
+    };
+    
+    _init();
+
+})(window);
